@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { supabase } from './supabaseClient';
 import { useNavigate, Link } from "react-router-dom";
 
 
@@ -37,7 +36,7 @@ export default function Signup(){
         seterrorMsg(null);
 
         //ui checks
-        if(!emailReceived || !passwordReceived ||!userNameReceived){
+        if(!emailReceived || !passwordReceived ||!userNameReceived || !confirmPasswordReceived){
             seterrorMsg("All fields required...");
             return;
         }
@@ -63,23 +62,27 @@ export default function Signup(){
 
         // signup in supabase and diable submit button
         setisLoading(true);
-        const {data, error} =  await supabase.auth.signUp(
-            {
-                email : emailReceived,
-                password: passwordReceived,
-                options : {
-                    data : {
-                        username : userNameReceived
-                    }
-                }
-            
-            });
+
+        console.log('sending ')
+
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/signup`,{
+            method : 'POST',
+            headers : {
+                'content-type' : 'application/json'
+            },
+            body : JSON.stringify({ email : emailReceived , password: passwordReceived , username: userNameReceived})
+        })
+
+        const data = await response.json(); 
+
+        console.log(data);
+
         setisLoading(false);
 
         // unable to signup
-        if(error){
-            console.error(error);
-            seterrorMsg(error.message);
+        if(!response.ok){
+            console.error(data.error);
+            seterrorMsg(data.error);
         }
         // successfully signed up , move to login
         else{

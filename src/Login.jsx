@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { supabase } from "./supabaseClient";
 import { useNavigate , Link } from "react-router-dom";
 
 
@@ -23,14 +22,14 @@ export default function Login(){
         setpasswordReceived(e.target.value);
     }
 
-    const handleLoginWithGoogle = (e) => {
-        supabase.auth.signInWithOAuth({ 
-            provider: 'google',
-            options: {
-                redirectTo: 'http://localhost:5173/dashboard'
-            }
-        })
-    }
+    // const handleLoginWithGoogle = (e) => {
+    //     supabase.auth.signInWithOAuth({ 
+    //         provider: 'google',
+    //         options: {
+    //             redirectTo: 'http://localhost:5173/dashboard'
+    //         }
+    //     })
+    // }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -54,18 +53,43 @@ export default function Login(){
         }
 
         setisLoading(true);
-        const {data, error} =  await supabase.auth.signInWithPassword({email : emailReceived, password: passwordReceived});
-        setisLoading(false);
-        if(error){
-            console.error(error,failedAttempts);
-            setfailedAttempts(prev => prev + 1);
-            seterrorMsg(error.message);
-        }
-        else{
+
+        console.log('trying');
+
+        try {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/login`,{
+                method : 'POST',
+                headers : {
+                    'content-type' : 'application/json' 
+                },
+                body : JSON.stringify({
+                    email : emailReceived,
+                    password : passwordReceived
+                }) 
+            })
+            const data = await response.json();
+
+            setisLoading(false);
+            if(!response.ok){
+                console.error(data.error,failedAttempts);
+                setfailedAttempts(prev => prev + 1);
+                seterrorMsg(data.error);
+            }
+            else{
+                console.log(data);
+                localStorage.setItem('jwt',data.jwt);
+                // console.log(localStorage.getItem('jwt'));
+                navigate('/dashboard');
+            }
             console.log(data);
-            navigate('/dashboard');
+
+        } catch (err) {
+            console.error(err);
+            setisLoading(false);
+            seterrorMsg('Internal server error');
         }
 
+    
         if(failedAttempts+1 == 5){
             setisLocked(true);
             seterrorMsg("Too many attempts, try again later")
@@ -88,7 +112,7 @@ export default function Login(){
             <input placeholder="Enter your email" value={emailReceived} onChange={handleChangeEmail}/>
             <input value={passwordReceived} onChange={handleChangePassword} placeholder="Enter your password" type="password"/>
             <button onClick={handleSubmit} disabled={isLoading || isLocked}>Submit</button>
-            <button onClick={handleLoginWithGoogle} disabled={isLoading || isLocked}> Login with google </button>
+            {/* <button onClick={handleLoginWithGoogle} disabled={isLoading || isLocked}> Login with google </button> */}
             <Link to='/signup'>Don't have an account. Signup</Link>
             {errorMsg && <p>{errorMsg}</p>}
             {isLoading && <p>Loading..</p>}
